@@ -1,11 +1,11 @@
-# @just-every/web-search
+# @just-every/search
 
 Web search utility for the MAGI system. Provides a unified interface for searching the web using various search engines including Brave, Anthropic, OpenAI, Google, Perplexity, and X.AI.
 
 ## Installation
 
 ```bash
-npm install @just-every/web-search
+npm install @just-every/search
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ npm install @just-every/web-search
 ### As a library
 
 ```typescript
-import { web_search } from '@just-every/web-search';
+import { web_search } from '@just-every/search';
 
 // Basic usage (backward compatible)
 const results = await web_search('brave', 'your search query', 5);
@@ -26,7 +26,7 @@ const results = await web_search('agent-id', 'brave', 'your search query', 5);
 
 ```bash
 # Install globally
-npm install -g @just-every/web-search
+npm install -g @just-every/search
 
 # Search with Brave (default)
 web-search "your search query"

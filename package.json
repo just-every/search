@@ -1,5 +1,5 @@
 {
-  "name": "@just-every/web-search",
+  "name": "@just-every/search",
   "version": "1.0.0",
   "description": "Web search utility for MAGI system",
   "main": "dist/index.js",
