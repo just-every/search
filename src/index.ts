@@ -2,15 +2,7 @@ import axios from 'axios';
 import { ToolFunction, createToolFunction, Agent, ResponseInput, ensembleRequest, ensembleResult } from '@just-every/ensemble';
 
 const DEFAULT_RESULTS_COUNT = 5;
-
-const BRAVE_API_KEY = process.env.BRAVE_API_KEY;
 const BRAVE_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
-
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const XAI_API_KEY = process.env.XAI_API_KEY;
 
 export interface SearchResult {
     title: string;
@@ -28,7 +20,8 @@ async function braveSearch(
 
     console.log(`Performing Brave API search for: ${query}`);
 
-    if (!BRAVE_API_KEY) {
+    const braveApiKey = process.env.BRAVE_API_KEY;
+    if (!braveApiKey) {
         return 'Error: Brave Search API key is not configured. Cannot perform search.';
     }
 
@@ -40,7 +33,7 @@ async function braveSearch(
             },
             headers: {
                 Accept: 'application/json',
-                'X-Subscription-Token': BRAVE_API_KEY,
+                'X-Subscription-Token': braveApiKey,
             },
         });
 
@@ -161,10 +154,10 @@ export async function web_search(
     }
     switch (engine) {
         case 'brave':
-            if (!BRAVE_API_KEY) return 'Error: Brave API key not configured.';
+            if (!process.env.BRAVE_API_KEY) return 'Error: Brave API key not configured.';
             return await braveSearch(query, numResults);
         case 'anthropic':
-            if (!ANTHROPIC_API_KEY)
+            if (!process.env.ANTHROPIC_API_KEY)
                 return 'Error: Anthropic API key not configured.';
             return await llmWebSearch(
                 query,
@@ -175,7 +168,7 @@ export async function web_search(
                 inject_agent_id || undefined
             );
         case 'openai':
-            if (!OPENAI_API_KEY) return 'Error: OpenAI API key not configured.';
+            if (!process.env.OPENAI_API_KEY) return 'Error: OpenAI API key not configured.';
             return await llmWebSearch(
                 query,
                 'gpt-4.1',
@@ -185,7 +178,7 @@ export async function web_search(
                 inject_agent_id || undefined
             );
         case 'google':
-            if (!GOOGLE_API_KEY) return 'Error: Google API key not configured.';
+            if (!process.env.GOOGLE_API_KEY) return 'Error: Google API key not configured.';
             return await llmWebSearch(
                 query,
                 'gemini-2.5-flash-preview-04-17',
@@ -197,7 +190,7 @@ export async function web_search(
         case 'sonar':
         case 'sonar-pro':
         case 'sonar-deep-research':
-            if (!OPENROUTER_API_KEY)
+            if (!process.env.OPENROUTER_API_KEY)
                 return 'Error: OpenRouter API key not configured.';
             return await llmWebSearch(
                 query,
@@ -208,7 +201,7 @@ export async function web_search(
                 inject_agent_id || undefined
             );
         case 'xai':
-            if (!XAI_API_KEY) return 'Error: X.AI API key not configured.';
+            if (!process.env.XAI_API_KEY) return 'Error: X.AI API key not configured.';
             return await llmWebSearch(
                 query,
                 'grok-3-latest',
@@ -226,35 +219,35 @@ export function getSearchTools(): ToolFunction[] {
     const availableEngines: string[] = [];
     const engineDescriptions: string[] = [];
 
-    if (ANTHROPIC_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY) {
         availableEngines.push('anthropic');
         engineDescriptions.push(
             '- anthropic: deep multi-hop research, strong source citations'
         );
     }
-    if (BRAVE_API_KEY) {
+    if (process.env.BRAVE_API_KEY) {
         availableEngines.push('brave');
         engineDescriptions.push(
             '- brave: privacy-first, independent index (good for niche/controversial)'
         );
     }
-    if (OPENAI_API_KEY) {
+    if (process.env.OPENAI_API_KEY) {
         availableEngines.push('openai');
         engineDescriptions.push(
             '- openai: ChatGPT-grade contextual search, cited results'
         );
     }
-    if (GOOGLE_API_KEY) {
+    if (process.env.GOOGLE_API_KEY) {
         availableEngines.push('google');
         engineDescriptions.push(
             '- google: freshest breaking-news facts via Gemini grounding'
         );
     }
-    if (XAI_API_KEY) {
+    if (process.env.XAI_API_KEY) {
         availableEngines.push('xai');
         engineDescriptions.push('- xai: real-time web search via Grok');
     }
-    if (OPENROUTER_API_KEY) {
+    if (process.env.OPENROUTER_API_KEY) {
         availableEngines.push('sonar');
         engineDescriptions.push(
             '- sonar: (perplexity) lightweight, cost-effective search model with grounding'

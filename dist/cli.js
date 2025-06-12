@@ -61,5 +61,5 @@ const argv = yargs(hideBin(process.argv))
     }
 })
     .help()
-    .parseSync();
+    .parse();
 //# sourceMappingURL=cli.js.map
