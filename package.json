@@ -1,6 +1,6 @@
 {
   "name": "@just-every/search",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Search every provider at once - Google, Anthropic, OpenAI, Perplexity, X.AI and Brave.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
