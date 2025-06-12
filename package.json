@@ -1,7 +1,7 @@
 {
   "name": "@just-every/search",
   "version": "1.0.2",
-  "description": "Web search utility for MAGI system",
+  "description": "Search every provider at once - Google, Anthropic, OpenAI, Perplexity, X.AI and Brave.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
