@@ -132,6 +132,61 @@ export async function web_search(engineOrInjectId, queryOrEngine, numResultsOrQu
             return `Error: Invalid or unsupported search engine ${engine}`;
     }
 }
+export async function web_search_task(query, modelClass = 'reasoning') {
+    // Import task functionality
+    const { runTask } = await import('@just-every/task');
+    const { Agent } = await import('@just-every/ensemble');
+    // Create an agent with the web search tools
+    const searchTools = getSearchTools();
+    if (searchTools.length === 0) {
+        return 'Error: No search engines are configured. Please set API keys for at least one search provider.';
+    }
+    const agent = new Agent({
+        modelClass,
+        name: 'ResearchAgent',
+        description: 'Comprehensive web research agent',
+        instructions: `You are a comprehensive research agent. Your goal is to conduct thorough research on the given topic by:
+
+1. Breaking down the query into key aspects that need investigation
+2. Using web_search tools to gather information from multiple sources
+3. Running searches in PARALLEL when possible to maximize efficiency
+4. Identifying gaps in the collected information and filling them with targeted searches
+5. Cross-referencing information from different sources for accuracy
+6. Synthesizing all findings into a comprehensive, well-structured report
+
+IMPORTANT GUIDELINES:
+- Use multiple search engines for diverse perspectives (if available)
+- Run searches in parallel using multiple tool calls in a single message
+- Be thorough - continue searching until all aspects are covered
+- Verify contradictory information by searching for additional sources
+- Include relevant quotes and citations in your final report
+- Structure the report with clear sections and subsections
+- End with a summary of key findings and any remaining open questions
+
+Start by analyzing the query and planning your research approach.`,
+        tools: searchTools
+    });
+    // Run the task with automatic meta-cognition and model rotation
+    const stream = runTask(agent, `Research the following topic comprehensively: ${query}
+
+Please provide a detailed report with multiple perspectives, citations, and a clear structure.`);
+    // Collect the full response
+    let fullResponse = '';
+    let error = null;
+    for await (const event of stream) {
+        if (event.type === 'message_delta' && 'content' in event) {
+            fullResponse += event.content;
+        }
+        else if (event.type === 'error' && 'error' in event) {
+            error = event.error;
+            break;
+        }
+    }
+    if (error) {
+        return `Error during research: ${error}`;
+    }
+    return fullResponse;
+}
 export function getSearchTools() {
     const availableEngines = [];
     const engineDescriptions = [];

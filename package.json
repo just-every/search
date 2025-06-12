@@ -27,6 +27,7 @@
   "license": "ISC",
   "dependencies": {
     "@just-every/ensemble": "^0.2.35",
+    "@just-every/task": "^0.2.12",
     "axios": "^1.7.9",
     "yargs": "^17.7.2"
   },
