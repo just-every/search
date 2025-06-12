@@ -1,6 +1,6 @@
 # @just-every/search
 
-Web search utility for the MAGI system. Provides a unified interface for searching the web using various search engines including Brave, Anthropic, OpenAI, Google, Perplexity, and X.AI.
+Search every provider at once - Google, Anthropic, OpenAI, Perplexity, X.AI and Brave.
 
 ## Installation
 
