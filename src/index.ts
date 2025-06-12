@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ToolFunction, createToolFunction, Agent, ResponseInput, ensembleRequest } from '@just-every/ensemble';
+import { ToolFunction, createToolFunction, Agent, ResponseInput, ensembleRequest, ensembleResult } from '@just-every/ensemble';
 
 const DEFAULT_RESULTS_COUNT = 5;
 
@@ -108,24 +108,16 @@ async function llmWebSearch(
         { type: 'message', role: 'user', content: query }
     ];
 
-    // Use ensemble's streaming API 
-    let result = '';
+    // Use ensemble's streaming API with ensembleResult
     const stream = ensembleRequest(messages, agent);
+    const result = await ensembleResult(stream);
     
-    for await (const event of stream) {
-        if (event.type === 'message_complete' && 'content' in event) {
-            result = (event as any).content || '';
-            break;
-        } else if (event.type === 'response_output' && 'message' in event) {
-            // Handle the response_output event which contains the full message
-            const message = (event as any).message;
-            if (message && message.content) {
-                result = message.content;
-            }
-        }
+    // Return the message content, or error if one occurred
+    if (result.error) {
+        return `Error: ${result.error}`;
     }
-
-    return result;
+    
+    return result.message || '';
 }
 
 // Overload signatures for backward compatibility
