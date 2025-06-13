@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { createToolFunction, Agent, ensembleRequest, ensembleResult } from '@just-every/ensemble';
+import { createToolFunction, Agent, ensembleRequest } from '@just-every/ensemble';
 const DEFAULT_RESULTS_COUNT = 5;
 const BRAVE_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 async function braveSearch(query, numResults = DEFAULT_RESULTS_COUNT) {
@@ -61,24 +61,30 @@ async function llmWebSearch(query, model, name, instructions, tools, parent_id) 
         name,
         description: 'Search the web',
         instructions,
-        modelSettings: {
-            max_tokens: 1024,
-        },
         tools,
         parent_id,
     });
-    agent.historyThread = [];
+    // Don't modify historyThread - it causes issues with some providers
     const messages = [
         { type: 'message', role: 'user', content: query }
     ];
-    // Use ensemble's streaming API with ensembleResult
+    // Use ensemble's streaming API
     const stream = ensembleRequest(messages, agent);
-    const result = await ensembleResult(stream);
-    // Return the message content, or error if one occurred
-    if (result.error) {
-        return `Error: ${result.error}`;
+    let fullResponse = '';
+    let error = null;
+    for await (const event of stream) {
+        if (event.type === 'message_delta' && 'content' in event) {
+            fullResponse += event.content;
+        }
+        else if (event.type === 'error' && 'error' in event) {
+            error = event.error;
+            break;
+        }
     }
-    return result.message || '';
+    if (error) {
+        return `Error: ${error}`;
+    }
+    return fullResponse;
 }
 // Implementation
 export async function web_search(engineOrInjectId, queryOrEngine, numResultsOrQuery, numResultsParam) {
@@ -132,15 +138,52 @@ export async function web_search(engineOrInjectId, queryOrEngine, numResultsOrQu
             return `Error: Invalid or unsupported search engine ${engine}`;
     }
 }
-export async function web_search_task(query, modelClass = 'reasoning') {
+export async function web_search_task(query, modelClass = 'reasoning_mini') {
     // Import task functionality
     const { runTask } = await import('@just-every/task');
     const { Agent } = await import('@just-every/ensemble');
-    // Create an agent with the web search tools
-    const searchTools = getSearchTools();
+    // Track search executions
+    const searchExecutions = new Map();
+    // Create a wrapper for web_search that tracks progress
+    async function web_search_with_tracking(engine, searchQuery, numResults) {
+        const startTime = Date.now();
+        const executionId = `${engine}-${Date.now()}`;
+        console.log(`\n🔍 [Search Started] Engine: ${engine}`);
+        console.log(`   Query: "${searchQuery}"`);
+        console.log(`   Time: ${new Date().toLocaleTimeString()}`);
+        try {
+            const result = await web_search(engine, searchQuery, numResults);
+            const duration = Date.now() - startTime;
+            searchExecutions.set(executionId, duration);
+            if (result.startsWith('Error:')) {
+                console.log(`❌ [Search Failed] Engine: ${engine} (${duration}ms)`);
+                console.log(`   Error: ${result}`);
+            }
+            else {
+                console.log(`✅ [Search Complete] Engine: ${engine} (${duration}ms)`);
+                const resultPreview = result.substring(0, 100);
+                console.log(`   Result preview: ${resultPreview}...`);
+            }
+            return result;
+        }
+        catch (error) {
+            const duration = Date.now() - startTime;
+            console.log(`❌ [Search Exception] Engine: ${engine} (${duration}ms)`);
+            console.log(`   Error: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+    // Create search tools with tracking
+    const searchTools = getSearchToolsWithTracking(web_search_with_tracking);
     if (searchTools.length === 0) {
         return 'Error: No search engines are configured. Please set API keys for at least one search provider.';
     }
+    // Log available search engines
+    const availableEngines = getAvailableEngines();
+    console.log(`\n🚀 Starting comprehensive research with ${availableEngines.length} search engines available:`);
+    availableEngines.forEach(engine => console.log(`   - ${engine}`));
+    console.log(`\n📊 Model class: ${modelClass}`);
+    console.log(`🔎 Research query: "${query}"\n`);
     const agent = new Agent({
         modelClass,
         name: 'ResearchAgent',
@@ -185,7 +228,78 @@ Please provide a detailed report with multiple perspectives, citations, and a cl
     if (error) {
         return `Error during research: ${error}`;
     }
+    // Log summary
+    console.log(`\n📈 Search Summary:`);
+    console.log(`   Total searches executed: ${searchExecutions.size}`);
+    if (searchExecutions.size > 0) {
+        const totalTime = Array.from(searchExecutions.values()).reduce((a, b) => a + b, 0);
+        console.log(`   Total search time: ${totalTime}ms`);
+        console.log(`   Average search time: ${Math.round(totalTime / searchExecutions.size)}ms`);
+    }
+    console.log(`\n✨ Research complete!\n`);
     return fullResponse;
+}
+function getAvailableEngines() {
+    const engines = [];
+    if (process.env.ANTHROPIC_API_KEY)
+        engines.push('anthropic');
+    if (process.env.BRAVE_API_KEY)
+        engines.push('brave');
+    if (process.env.OPENAI_API_KEY)
+        engines.push('openai');
+    if (process.env.GOOGLE_API_KEY)
+        engines.push('google');
+    if (process.env.XAI_API_KEY)
+        engines.push('xai');
+    if (process.env.OPENROUTER_API_KEY) {
+        engines.push('sonar', 'sonar-pro', 'sonar-deep-research');
+    }
+    return engines;
+}
+function getSearchToolsWithTracking(searchFunction) {
+    const availableEngines = getAvailableEngines();
+    const engineDescriptions = [];
+    if (availableEngines.includes('anthropic')) {
+        engineDescriptions.push('- anthropic: deep multi-hop research, strong source citations');
+    }
+    if (availableEngines.includes('brave')) {
+        engineDescriptions.push('- brave: privacy-first, independent index (good for niche/controversial)');
+    }
+    if (availableEngines.includes('openai')) {
+        engineDescriptions.push('- openai: ChatGPT-grade contextual search, cited results');
+    }
+    if (availableEngines.includes('google')) {
+        engineDescriptions.push('- google: freshest breaking-news facts via Gemini grounding');
+    }
+    if (availableEngines.includes('xai')) {
+        engineDescriptions.push('- xai: real-time web search via Grok');
+    }
+    if (availableEngines.includes('sonar')) {
+        engineDescriptions.push('- sonar: (perplexity) lightweight, cost-effective search model with grounding');
+        engineDescriptions.push('- sonar-pro: (perplexity) advanced search offering with grounding, supporting complex queries and follow-ups');
+        engineDescriptions.push('- sonar-deep-research: (perplexity) expert-level research model conducting exhaustive searches and generating comprehensive reports');
+    }
+    if (availableEngines.length === 0) {
+        return [];
+    }
+    return [
+        createToolFunction(searchFunction, 'Adaptive web search - pick the engines that best fit the query.', {
+            engine: {
+                type: 'string',
+                description: `Engine to use:\n${engineDescriptions.join('\n')}`,
+                enum: availableEngines,
+            },
+            query: {
+                type: 'string',
+                description: 'Plain-language search query. Each engine has AI interpretation, so you can leave it up to the engine to decide how to search.',
+            },
+            numResults: {
+                type: 'number',
+                description: 'Max results to return (default = 5).',
+                optional: true,
+            },
+        }),
+    ];
 }
 export function getSearchTools() {
     const availableEngines = [];

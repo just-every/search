@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { web_search } from './index.js';
+import { web_search, web_search_task } from './index.js';
 const argv = yargs(hideBin(process.argv))
     .command('$0 <query>', 'Search the web using various search engines', (yargs) => {
     return yargs
@@ -57,6 +57,36 @@ const argv = yargs(hideBin(process.argv))
     }
     catch (error) {
         console.error('Search failed:', error);
+        process.exit(1);
+    }
+})
+    .command('task <query>', 'Run comprehensive research using web_search_task', (yargs) => {
+    return yargs
+        .positional('query', {
+        describe: 'The research query',
+        type: 'string',
+        demandOption: true,
+    })
+        .option('model-class', {
+        alias: 'm',
+        describe: 'Model class to use',
+        type: 'string',
+        choices: ['standard', 'mini', 'reasoning', 'reasoning_mini', 'monologue', 'metacognition', 'code', 'writing', 'summary', 'vision', 'vision_mini', 'search', 'image_generation', 'embedding', 'voice'],
+        default: 'reasoning_mini',
+    });
+}, async (argv) => {
+    try {
+        console.log(`Running comprehensive research on: "${argv.query}"\n`);
+        console.log(`Using model class: ${argv.modelClass}\n`);
+        const result = await web_search_task(argv.query, argv.modelClass);
+        if (result.startsWith('Error:')) {
+            console.error(result);
+            process.exit(1);
+        }
+        console.log(result);
+    }
+    catch (error) {
+        console.error('Research task failed:', error);
         process.exit(1);
     }
 })

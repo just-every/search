@@ -39,6 +39,16 @@ web-search "your search query" -n 10
 
 # Output raw JSON
 web-search "your search query" --json
+
+# Run comprehensive research with AI agents
+web-search task "your research query"
+
+# Use a specific model class for research
+web-search task "your research query" -m reasoning
+
+# Available model classes: standard, mini, reasoning, reasoning_mini (default),
+# monologue, metacognition, code, writing, summary, vision, vision_mini,
+# search, image_generation, embedding, voice
 ```
 
 ## Available Search Engines
@@ -76,6 +86,15 @@ Performs a web search using the specified engine.
 - `numResults` - Number of results to return (default: 5)
 
 Returns a JSON string containing search results.
+
+### `web_search_task(query, modelClass?)`
+
+Runs comprehensive research using multiple search engines in parallel with AI agents.
+
+- `query` - Research query string
+- `modelClass` - Model class to use (default: 'reasoning_mini')
+
+Returns a comprehensive research report as a string.
 
 ### `getSearchTools()`
 
