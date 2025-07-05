@@ -3,11 +3,21 @@ import { ToolFunction, createToolFunction, Agent, ResponseInput, ensembleRequest
 
 const DEFAULT_RESULTS_COUNT = 5;
 const BRAVE_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
+const BRAVE_IMAGE_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/images/search';
 
 export interface SearchResult {
     title: string;
     url: string;
     snippet: string;
+}
+
+export interface ImageSearchResult {
+    title: string;
+    url: string;
+    thumbnail: string;
+    source: string;
+    width?: number;
+    height?: number;
 }
 
 async function braveSearch(
@@ -57,6 +67,65 @@ async function braveSearch(
     }
 }
 
+async function braveImageSearch(
+    query: string,
+    numResults: number = DEFAULT_RESULTS_COUNT
+): Promise<string> {
+    if (typeof query !== 'string') {
+        return `Error: Search query must be a string, received ${typeof query}: ${JSON.stringify(query)}`;
+    }
+
+    console.log(`Performing Brave Image Search for: ${query}`);
+
+    const braveApiKey = process.env.BRAVE_API_KEY;
+    if (!braveApiKey) {
+        return 'Error: Brave Search API key is not configured. Cannot perform image search.';
+    }
+
+    try {
+        const response = await axios.get(BRAVE_IMAGE_SEARCH_ENDPOINT, {
+            params: {
+                q: query,
+                count: numResults
+            },
+            headers: {
+                Accept: 'application/json',
+                'X-Subscription-Token': braveApiKey,
+            },
+        });
+
+        if (response.data && response.data.results) {
+            const results: ImageSearchResult[] = response.data.results.map((result: any) => ({
+                title: result.title || 'Untitled',
+                url: result.url,
+                thumbnail: result.thumbnail?.src || result.url,
+                source: result.source || 'Unknown',
+                width: result.properties?.width,
+                height: result.properties?.height
+            }));
+
+            return JSON.stringify(results);
+        }
+        console.error(
+            'Invalid response structure from Brave Image Search API:',
+            response.data
+        );
+        return 'Error: Received an invalid response structure from Brave Image Search API.';
+    } catch (error) {
+        console.error('Error during Brave Image Search:', error);
+        
+        // Log the specific error details if available
+        if (error instanceof Error && 'response' in error) {
+            const axiosError = error as any;
+            if (axiosError.response?.data) {
+                console.error('API Error Response:', axiosError.response.data);
+            }
+        }
+        
+        return `Error performing Brave image search: ${error instanceof Error ? error.message : String(error)}`;
+    }
+}
+
 function signalToolFunction(name: string): ToolFunction {
     return {
         function: () => '',
@@ -73,6 +142,19 @@ function signalToolFunction(name: string): ToolFunction {
             },
         },
     };
+}
+
+function isImageQuery(query: string): boolean {
+    const imageKeywords = [
+        'image', 'images', 'photo', 'photos', 'picture', 'pictures', 'pic', 'pics',
+        'logo', 'logos', 'icon', 'icons', 'screenshot', 'screenshots',
+        'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp',
+        'wallpaper', 'wallpapers', 'background', 'backgrounds',
+        'thumbnail', 'thumbnails', 'avatar', 'avatars'
+    ];
+    
+    const lowerQuery = query.toLowerCase();
+    return imageKeywords.some(keyword => lowerQuery.includes(keyword));
 }
 
 async function llmWebSearch(
@@ -163,6 +245,9 @@ export async function web_search(
         case 'brave':
             if (!process.env.BRAVE_API_KEY) return 'Error: Brave API key not configured.';
             return await braveSearch(query, numResults);
+        case 'brave-images':
+            if (!process.env.BRAVE_API_KEY) return 'Error: Brave API key not configured.';
+            return await braveImageSearch(query, numResults);
         case 'anthropic':
             if (!process.env.ANTHROPIC_API_KEY)
                 return 'Error: Anthropic API key not configured.';
@@ -224,7 +309,7 @@ export async function web_search(
 
 export async function web_search_task(
     query: string,
-    modelClass: 'standard' | 'mini' | 'reasoning' | 'reasoning_mini' | 'monologue' | 'metacognition' | 'code' | 'writing' | 'summary' | 'vision' | 'vision_mini' | 'search' | 'image_generation' | 'embedding' | 'voice' = 'reasoning_mini'
+    modelClass: 'standard' | 'mini' | 'reasoning' | 'reasoning_mini' | 'monologue' | 'metacognition' | 'code' | 'writing' | 'summary' | 'vision' | 'vision_mini' |  'image_generation' | 'embedding' | 'voice' = 'reasoning_mini'
 ): Promise<string> {
     // Import task functionality
     const { runTask } = await import('@just-every/task');
@@ -347,7 +432,9 @@ Please provide a detailed report with multiple perspectives, citations, and a cl
 function getAvailableEngines(): string[] {
     const engines: string[] = [];
     if (process.env.ANTHROPIC_API_KEY) engines.push('anthropic');
-    if (process.env.BRAVE_API_KEY) engines.push('brave');
+    if (process.env.BRAVE_API_KEY) {
+        engines.push('brave', 'brave-images');
+    }
     if (process.env.OPENAI_API_KEY) engines.push('openai');
     if (process.env.GOOGLE_API_KEY) engines.push('google');
     if (process.env.XAI_API_KEY) engines.push('xai');
@@ -368,6 +455,9 @@ function getSearchToolsWithTracking(
     }
     if (availableEngines.includes('brave')) {
         engineDescriptions.push('- brave: privacy-first, independent index (good for niche/controversial)');
+    }
+    if (availableEngines.includes('brave-images')) {
+        engineDescriptions.push('- brave-images: privacy-first image search with direct URLs to images');
     }
     if (availableEngines.includes('openai')) {
         engineDescriptions.push('- openai: ChatGPT-grade contextual search, cited results');
@@ -426,6 +516,10 @@ export function getSearchTools(): ToolFunction[] {
         availableEngines.push('brave');
         engineDescriptions.push(
             '- brave: privacy-first, independent index (good for niche/controversial)'
+        );
+        availableEngines.push('brave-images');
+        engineDescriptions.push(
+            '- brave-images: privacy-first image search with direct URLs to images'
         );
     }
     if (process.env.OPENAI_API_KEY) {

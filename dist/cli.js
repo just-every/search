@@ -1,7 +1,19 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { web_search, web_search_task } from './index.js';
+function isImageQuery(query) {
+    const imageKeywords = [
+        'image', 'images', 'photo', 'photos', 'picture', 'pictures', 'pic', 'pics',
+        'logo', 'logos', 'icon', 'icons', 'screenshot', 'screenshots',
+        'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp',
+        'wallpaper', 'wallpapers', 'background', 'backgrounds',
+        'thumbnail', 'thumbnails', 'avatar', 'avatars'
+    ];
+    const lowerQuery = query.toLowerCase();
+    return imageKeywords.some(keyword => lowerQuery.includes(keyword));
+}
 const argv = yargs(hideBin(process.argv))
     .command('$0 <query>', 'Search the web using various search engines', (yargs) => {
     return yargs
@@ -14,7 +26,7 @@ const argv = yargs(hideBin(process.argv))
         alias: 'e',
         describe: 'Search engine to use',
         type: 'string',
-        choices: ['brave', 'anthropic', 'openai', 'google', 'sonar', 'sonar-pro', 'sonar-deep-research', 'xai'],
+        choices: ['brave', 'brave-images', 'anthropic', 'openai', 'google', 'sonar', 'sonar-pro', 'sonar-deep-research', 'xai'],
         default: 'brave',
     })
         .option('results', {
@@ -31,8 +43,13 @@ const argv = yargs(hideBin(process.argv))
     });
 }, async (argv) => {
     try {
+        let engine = argv.engine;
+        // Auto-detect image queries and suggest brave-images if using brave
+        if (engine === 'brave' && isImageQuery(argv.query)) {
+            console.log(`🔍 Detected image query. Consider using --engine brave-images for better results.\n`);
+        }
         // CLI doesn't use inject_agent_id, so we use the backward-compatible signature
-        const result = await web_search(argv.engine, argv.query, argv.results);
+        const result = await web_search(engine, argv.query, argv.results);
         if (argv.json) {
             console.log(result);
         }
@@ -47,7 +64,18 @@ const argv = yargs(hideBin(process.argv))
                 results.forEach((item, index) => {
                     console.log(`${index + 1}. ${item.title}`);
                     console.log(`   ${item.url}`);
-                    console.log(`   ${item.snippet}\n`);
+                    // Handle image results
+                    if (item.thumbnail && item.source) {
+                        console.log(`   Source: ${item.source}`);
+                        console.log(`   Thumbnail: ${item.thumbnail}`);
+                        if (item.width && item.height) {
+                            console.log(`   Dimensions: ${item.width}x${item.height}`);
+                        }
+                    }
+                    else if (item.snippet) {
+                        console.log(`   ${item.snippet}`);
+                    }
+                    console.log();
                 });
             }
             catch (e) {
@@ -71,7 +99,7 @@ const argv = yargs(hideBin(process.argv))
         alias: 'm',
         describe: 'Model class to use',
         type: 'string',
-        choices: ['standard', 'mini', 'reasoning', 'reasoning_mini', 'monologue', 'metacognition', 'code', 'writing', 'summary', 'vision', 'vision_mini', 'search', 'image_generation', 'embedding', 'voice'],
+        choices: ['standard', 'mini', 'reasoning', 'reasoning_mini', 'monologue', 'metacognition', 'code', 'writing', 'summary', 'vision', 'vision_mini', 'image_generation', 'embedding', 'voice'],
         default: 'reasoning_mini',
     });
 }, async (argv) => {
