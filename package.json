@@ -26,8 +26,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@just-every/ensemble": "file:../ensemble",
-    "@just-every/task": "file:../task",
+    "@just-every/ensemble": "^0.2.140",
+    "@just-every/task": "^0.2.31",
     "axios": "^1.7.9",
     "yargs": "^18.0.0"
   },
