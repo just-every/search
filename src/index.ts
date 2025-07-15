@@ -170,6 +170,7 @@ async function llmWebSearch(
         name,
         description: 'Search the web',
         instructions,
+        tags: ['search', 'web'],
         tools,
         parent_id,
     });
@@ -273,7 +274,7 @@ export async function web_search(
             if (!process.env.GOOGLE_API_KEY) return 'Error: Google API key not configured.';
             return await llmWebSearch(
                 query,
-                'gemini-2.5-flash-preview-04-17',
+                'gemini-2.5-flash',
                 'GoogleSearch',
                 'Please answer this using search grounding.',
                 [signalToolFunction('google_web_search')],
@@ -296,7 +297,7 @@ export async function web_search(
             if (!process.env.XAI_API_KEY) return 'Error: X.AI API key not configured.';
             return await llmWebSearch(
                 query,
-                'grok-3-latest',
+                'grok-3-mini-fast',
                 'GrokSearch',
                 'Please search the web for this query.',
                 [signalToolFunction('grok_web_search')],
@@ -371,6 +372,7 @@ export async function web_search_task(
     const agent = new Agent({
         modelClass,
         name: 'ResearchAgent',
+        tags: ['search', 'research'],
         description: 'Comprehensive web research agent',
         instructions: `You are a comprehensive research agent. Your goal is to conduct thorough research on the given topic by:
 
@@ -481,7 +483,7 @@ function getSearchToolsWithTracking(
     return [
         createToolFunction(
             searchFunction,
-            'Adaptive web search - pick the engines that best fit the query.',
+            'Fast web search - pick the engines that best fit the query.',
             {
                 engine: {
                     type: 'string',
@@ -560,7 +562,7 @@ export function getSearchTools(): ToolFunction[] {
     return [
         createToolFunction(
             web_search,
-            'Adaptive web search - pick the engines that best fit the query.',
+            'Fast web search - pick the engines that best fit the query.',
             {
                 engine: {
                     type: 'string',
