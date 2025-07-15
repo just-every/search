@@ -119,6 +119,7 @@ async function llmWebSearch(query, model, name, instructions, tools, parent_id) 
         name,
         description: 'Search the web',
         instructions,
+        tags: ['search', 'web'],
         tools,
         parent_id,
     });
@@ -185,7 +186,7 @@ export async function web_search(engineOrInjectId, queryOrEngine, numResultsOrQu
         case 'google':
             if (!process.env.GOOGLE_API_KEY)
                 return 'Error: Google API key not configured.';
-            return await llmWebSearch(query, 'gemini-2.5-flash-preview-04-17', 'GoogleSearch', 'Please answer this using search grounding.', [signalToolFunction('google_web_search')], inject_agent_id || undefined);
+            return await llmWebSearch(query, 'gemini-2.5-flash', 'GoogleSearch', 'Please answer this using search grounding.', [signalToolFunction('google_web_search')], inject_agent_id || undefined);
         case 'sonar':
         case 'sonar-pro':
         case 'sonar-deep-research':
@@ -195,7 +196,7 @@ export async function web_search(engineOrInjectId, queryOrEngine, numResultsOrQu
         case 'xai':
             if (!process.env.XAI_API_KEY)
                 return 'Error: X.AI API key not configured.';
-            return await llmWebSearch(query, 'grok-3-latest', 'GrokSearch', 'Please search the web for this query.', [signalToolFunction('grok_web_search')], inject_agent_id || undefined);
+            return await llmWebSearch(query, 'grok-3-mini-fast', 'GrokSearch', 'Please search the web for this query.', [signalToolFunction('grok_web_search')], inject_agent_id || undefined);
         default:
             return `Error: Invalid or unsupported search engine ${engine}`;
     }
@@ -249,6 +250,7 @@ export async function web_search_task(query, modelClass = 'reasoning_mini') {
     const agent = new Agent({
         modelClass,
         name: 'ResearchAgent',
+        tags: ['search', 'research'],
         description: 'Comprehensive web research agent',
         instructions: `You are a comprehensive research agent. Your goal is to conduct thorough research on the given topic by:
 
@@ -349,7 +351,7 @@ function getSearchToolsWithTracking(searchFunction) {
         return [];
     }
     return [
-        createToolFunction(searchFunction, 'Adaptive web search - pick the engines that best fit the query.', {
+        createToolFunction(searchFunction, 'Fast web search - pick the engines that best fit the query.', {
             engine: {
                 type: 'string',
                 description: `Engine to use:\n${engineDescriptions.join('\n')}`,
@@ -404,7 +406,7 @@ export function getSearchTools() {
         return [];
     }
     return [
-        createToolFunction(web_search, 'Adaptive web search - pick the engines that best fit the query.', {
+        createToolFunction(web_search, 'Fast web search - pick the engines that best fit the query.', {
             engine: {
                 type: 'string',
                 description: `Engine to use:\n${engineDescriptions.join('\n')}`,
