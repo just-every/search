@@ -130,3 +130,8 @@ $RECYCLE.BIN/
 *.backup
 *.old
 .history/
+
+# Temporary test files
+test-*.ts
+quick-test.ts
+*-test.ts
